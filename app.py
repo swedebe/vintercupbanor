@@ -16,29 +16,6 @@ def contains_subsequence(codes, subsequence):
 def parse_course_input(text):
     return [code.strip() for code in text.split(',') if code.strip()]
 
-def match_course(name, control_codes, splits, finish_time):
-    if not control_codes:
-        return None
-
-    raw_splits = [s for s in splits if s['status'] not in ("Missing", "Additional")]
-    split_codes = [s['code'] for s in raw_splits]
-
-    match = contains_subsequence(split_codes, control_codes)
-    if match:
-        i_start, i_end = match
-        start_time = raw_splits[i_start]["time"]
-        end_time = raw_splits[i_end]["time"]
-        if start_time is not None and end_time is not None:
-            return name, start_time, end_time
-    else:
-        match_core = contains_subsequence(split_codes, control_codes[:-1])
-        if match_core and finish_time is not None:
-            i_start, _ = match_core
-            start_time = raw_splits[i_start]["time"]
-            if start_time is not None:
-                return name, start_time, finish_time
-    return None
-
 def extract_results(result_root, courses):
     ns = {"iof": "http://www.orienteering.org/datastandard/3.0"}
     results = {name: [] for name in courses if courses[name]}
@@ -64,16 +41,31 @@ def extract_results(result_root, courses):
             code = split.findtext("iof:ControlCode", namespaces=ns)
             time = split.findtext("iof:Time", namespaces=ns)
             status = split.get("status", "")
-            splits.append({"code": code, "time": int(time) if time else None, "status": status})
+            if code:
+                splits.append({"code": code, "time": int(time) if time else None, "status": status})
+
+        clean_splits = [s for s in splits if s['status'] not in ("Missing", "Additional") and s['code'] and s['time'] is not None]
+        split_codes = [s['code'] for s in clean_splits]
 
         for course_name, control_codes in courses.items():
             if not control_codes:
                 continue
-            match = match_course(course_name, control_codes, splits, finish_time)
-            if match:
-                _, start, end = match
-                results[course_name].append((full_name, end - start))
-                break
+            match = contains_subsequence(split_codes, control_codes[:-1])
+            while match:
+                i_start, i_end = match
+                start_time = clean_splits[i_start]['time']
+
+                end_time = None
+                if i_end + 1 < len(clean_splits) and clean_splits[i_end + 1]['code'] == control_codes[-1]:
+                    end_time = clean_splits[i_end + 1]['time']
+                elif finish_time is not None:
+                    end_time = finish_time
+
+                if start_time is not None and end_time is not None:
+                    results[course_name].append((full_name, end_time - start_time))
+
+                split_codes[i_end] = "__used__"
+                match = contains_subsequence(split_codes, control_codes[:-1])
 
     return results
 
