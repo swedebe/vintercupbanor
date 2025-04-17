@@ -16,7 +16,7 @@ def contains_subsequence(codes, subsequence):
 def parse_course_input(text):
     return [code.strip() for code in text.split(',') if code.strip()]
 
-def extract_results(result_root, courses):
+def extract_results(result_root, courses, lap_control):
     ns = {"iof": "http://www.orienteering.org/datastandard/3.0"}
     results = {name: [] for name in courses if courses[name]}
 
@@ -58,33 +58,36 @@ def extract_results(result_root, courses):
         clean_splits = [s for s in splits if s['status'] not in ("Missing", "Additional") and s['code']]
         split_codes = [s['code'] for s in clean_splits]
 
-        for course_name, control_codes in courses.items():
-            if not control_codes:
+        for course_name, full_control_codes in courses.items():
+            if not full_control_codes:
                 continue
+            if full_control_codes[-1] != lap_control:
+                return f"<h1>Fel</h1><p>Alla banor måste sluta med samma kodsiffra samt överensstämma med varvningskontrollen</p>"
 
-            match = contains_subsequence(split_codes, control_codes[:-1])
+            match_codes = full_control_codes[:-1]  # exkludera varvningskontrollen
+            match = contains_subsequence(split_codes, match_codes)
+
             while match:
                 i_start, i_end = match
 
-                # Hitta starttid (kontroll 100 före match, annars StartTime)
+                # Starttid: 100 före match eller <StartTime>
                 start_time = start_offset
-                for j in range(i_start - 1, -1, -1):
-                    if clean_splits[j]['code'] == '100' and clean_splits[j]['time'] is not None:
-                        start_time = clean_splits[j]['time']
-                        break
+                if i_start > 0 and clean_splits[i_start - 1]['code'] == lap_control:
+                    if clean_splits[i_start - 1]['time'] is not None:
+                        start_time = clean_splits[i_start - 1]['time']
 
-                # Hitta slut (kontroll 100 efter matchen, annars FinishTime)
-                end_time = None
-                for j in range(i_end + 1, len(clean_splits)):
-                    if clean_splits[j]['code'] == control_codes[-1]:
-                        end_time = clean_splits[j]['time'] if clean_splits[j]['time'] is not None else finish_time
-                        break
+                # Sluttid: 100 efter match eller <FinishTime>
+                end_time = finish_time
+                if i_end + 1 < len(clean_splits) and clean_splits[i_end + 1]['code'] == lap_control:
+                    if clean_splits[i_end + 1]['time'] is not None:
+                        end_time = clean_splits[i_end + 1]['time']
 
                 if start_time is not None and end_time is not None:
                     results[course_name].append((full_name, end_time - start_time))
 
-                split_codes[i_end] = "__used__"
-                match = contains_subsequence(split_codes, control_codes[:-1])
+                for i in range(i_start, i_end + 1):
+                    split_codes[i] = "__used__"
+                match = contains_subsequence(split_codes, match_codes)
 
     return results
 
@@ -96,6 +99,10 @@ def index():
             result_tree = etree.parse(result_xml)
             result_root = result_tree.getroot()
 
+            lap_control = request.form.get("lap_control", "").strip()
+            if not lap_control:
+                return "<h1>Fel</h1><p>Varvningskontroll saknas</p>"
+
             courses = {
                 "A": parse_course_input(request.form.get("course_A", "")),
                 "B": parse_course_input(request.form.get("course_B", "")),
@@ -104,7 +111,9 @@ def index():
                 "E": parse_course_input(request.form.get("course_E", "")),
             }
 
-            result_data = extract_results(result_root, courses)
+            result_data = extract_results(result_root, courses, lap_control)
+            if isinstance(result_data, str):
+                return result_data  # visa ev. felmeddelande
 
             rendered = render_template("result.html", results=result_data)
             html_file = BytesIO(rendered.encode("utf-8"))
@@ -115,8 +124,9 @@ def index():
     return '''
     <!doctype html>
     <title>Resultat per bana</title>
-    <h1>Klistra in kontroller för banorna A–E och ladda upp resultatfil</h1>
+    <h1>Klistra in kontroller för banorna A–E, välj varvningskontroll och ladda upp resultatfil</h1>
     <form method=post enctype=multipart/form-data>
+      Varvningskontroll: <input type=text name=lap_control size=10><br><br>
       Bana A: <input type=text name=course_A size=80><br><br>
       Bana B: <input type=text name=course_B size=80><br><br>
       Bana C: <input type=text name=course_C size=80><br><br>
