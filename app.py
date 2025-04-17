@@ -17,6 +17,9 @@ def parse_course_input(text):
     return [code.strip() for code in text.split(',') if code.strip()]
 
 def match_course(name, control_codes, splits, finish_time):
+    if not control_codes:
+        return None
+
     raw_splits = [s for s in splits if s['status'] not in ("Missing", "Additional")]
     split_codes = [s['code'] for s in raw_splits]
 
@@ -38,7 +41,7 @@ def match_course(name, control_codes, splits, finish_time):
 
 def extract_results(result_root, courses):
     ns = {"iof": "http://www.orienteering.org/datastandard/3.0"}
-    results = {name: [] for name in courses}
+    results = {name: [] for name in courses if courses[name]}
 
     for person_result in result_root.findall(".//iof:PersonResult", namespaces=ns):
         person_elem = person_result.find(".//iof:Name", namespaces=ns)
@@ -64,6 +67,8 @@ def extract_results(result_root, courses):
             splits.append({"code": code, "time": int(time) if time else None, "status": status})
 
         for course_name, control_codes in courses.items():
+            if not control_codes:
+                continue
             match = match_course(course_name, control_codes, splits, finish_time)
             if match:
                 _, start, end = match
@@ -75,23 +80,26 @@ def extract_results(result_root, courses):
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        result_xml = request.files["result_xml"]
-        result_tree = etree.parse(result_xml)
-        result_root = result_tree.getroot()
+        try:
+            result_xml = request.files["result_xml"]
+            result_tree = etree.parse(result_xml)
+            result_root = result_tree.getroot()
 
-        courses = {
-            "A": parse_course_input(request.form.get("course_A", "")),
-            "B": parse_course_input(request.form.get("course_B", "")),
-            "C": parse_course_input(request.form.get("course_C", "")),
-            "D": parse_course_input(request.form.get("course_D", "")),
-            "E": parse_course_input(request.form.get("course_E", "")),
-        }
+            courses = {
+                "A": parse_course_input(request.form.get("course_A", "")),
+                "B": parse_course_input(request.form.get("course_B", "")),
+                "C": parse_course_input(request.form.get("course_C", "")),
+                "D": parse_course_input(request.form.get("course_D", "")),
+                "E": parse_course_input(request.form.get("course_E", "")),
+            }
 
-        result_data = extract_results(result_root, courses)
+            result_data = extract_results(result_root, courses)
 
-        rendered = render_template("result.html", results=result_data)
-        html_file = BytesIO(rendered.encode("utf-8"))
-        return send_file(html_file, as_attachment=True, download_name="resultat.html", mimetype="text/html")
+            rendered = render_template("result.html", results=result_data)
+            html_file = BytesIO(rendered.encode("utf-8"))
+            return send_file(html_file, as_attachment=True, download_name="resultat.html", mimetype="text/html")
+        except Exception as e:
+            return f"<h1>Fel vid bearbetning:</h1><pre>{str(e)}</pre>"
 
     return '''
     <!doctype html>
