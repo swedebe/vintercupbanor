@@ -13,15 +13,8 @@ def contains_subsequence(codes, subsequence):
             return i, i+n-1
     return None
 
-def get_courses_from_meos(meos_root):
-    courses = {}
-    for course_elem in meos_root.findall(".//Course"):
-        name = course_elem.findtext("Name")
-        control_text = course_elem.findtext("Controls")
-        if name in ['A', 'B', 'C', 'D', 'E'] and control_text:
-            codes = [code for code in control_text.strip().split(";") if code]
-            courses[name] = codes
-    return courses
+def parse_course_input(text):
+    return [code.strip() for code in text.split(',') if code.strip()]
 
 def match_course(name, control_codes, splits, finish_time):
     raw_splits = [s for s in splits if s['status'] not in ("Missing", "Additional")]
@@ -82,15 +75,17 @@ def extract_results(result_root, courses):
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        meos_xml = request.files["meos_xml"]
         result_xml = request.files["result_xml"]
-
-        meos_tree = etree.parse(meos_xml)
-        meos_root = meos_tree.getroot()
-        courses = get_courses_from_meos(meos_root)
-
         result_tree = etree.parse(result_xml)
         result_root = result_tree.getroot()
+
+        courses = {
+            "A": parse_course_input(request.form.get("course_A", "")),
+            "B": parse_course_input(request.form.get("course_B", "")),
+            "C": parse_course_input(request.form.get("course_C", "")),
+            "D": parse_course_input(request.form.get("course_D", "")),
+            "E": parse_course_input(request.form.get("course_E", "")),
+        }
 
         result_data = extract_results(result_root, courses)
 
@@ -100,10 +95,14 @@ def index():
 
     return '''
     <!doctype html>
-    <title>Ladda upp MeOS- och resultat-XML</title>
-    <h1>Ladda upp meosxml och ejrakabanor.xml</h1>
+    <title>Resultat per bana</title>
+    <h1>Klistra in kontroller för banorna A–E och ladda upp resultatfil</h1>
     <form method=post enctype=multipart/form-data>
-      MeOS XML: <input type=file name=meos_xml><br><br>
+      Bana A: <input type=text name=course_A size=80><br><br>
+      Bana B: <input type=text name=course_B size=80><br><br>
+      Bana C: <input type=text name=course_C size=80><br><br>
+      Bana D: <input type=text name=course_D size=80><br><br>
+      Bana E: <input type=text name=course_E size=80><br><br>
       Resultat XML: <input type=file name=result_xml><br><br>
       <input type=submit value="Generera HTML">
     </form>
