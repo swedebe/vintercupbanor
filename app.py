@@ -42,9 +42,10 @@ def extract_results(result_root, courses):
             time = split.findtext("iof:Time", namespaces=ns)
             status = split.get("status", "")
             if code:
+                # Tillåt även None i time – vi bryr oss bara om start, slut och kod 100
                 splits.append({"code": code, "time": int(time) if time else None, "status": status})
 
-        clean_splits = [s for s in splits if s['status'] not in ("Missing", "Additional") and s['code'] and s['time'] is not None]
+        clean_splits = [s for s in splits if s['status'] not in ("Missing", "Additional") and s['code']]
         split_codes = [s['code'] for s in clean_splits]
 
         for course_name, control_codes in courses.items():
