@@ -61,25 +61,25 @@ def extract_results(result_root, courses):
         for course_name, control_codes in courses.items():
             if not control_codes:
                 continue
-            match = contains_subsequence(split_codes, control_codes[:-1])
+            match = contains_subsequence(split_codes, control_codes)
             while match:
                 i_start, i_end = match
-                start_time = clean_splits[i_start]['time']
 
-                end_time = None
-                for j in range(i_end + 1, len(clean_splits)):
-                    if clean_splits[j]['code'] == control_codes[-1] and clean_splits[j]['time'] is not None:
-                        end_time = clean_splits[j]['time']
+                # Hitta föregående kontrollkod 100 som start, annars använd start_offset
+                start_time = start_offset
+                for j in range(i_start - 1, -1, -1):
+                    if clean_splits[j]['code'] == '100' and clean_splits[j]['time'] is not None:
+                        start_time = clean_splits[j]['time']
                         break
 
-                if end_time is None and finish_time is not None:
-                    end_time = finish_time
+                end_time = clean_splits[i_end]['time'] if clean_splits[i_end]['time'] is not None else finish_time
 
                 if start_time is not None and end_time is not None:
                     results[course_name].append((full_name, end_time - start_time))
 
-                split_codes[i_end] = "__used__"
-                match = contains_subsequence(split_codes, control_codes[:-1])
+                for i in range(i_start, i_end + 1):
+                    split_codes[i] = "__used__"
+                match = contains_subsequence(split_codes, control_codes)
 
     return results
 
