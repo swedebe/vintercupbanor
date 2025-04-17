@@ -20,9 +20,9 @@
             <h3>Bana {{ course }}</h3>
             <table>
                 <tr><th>Placering</th><th>Namn</th><th>Klubb</th><th>Totaltid</th></tr>
-                {% for i, r in enumerate(results[course]|sort(attribute=2), 1) %}
+                {% for r in results[course]|sort(attribute=2) %}
                     <tr>
-                        <td>{{ i }}</td>
+                        <td>{{ loop.index }}</td>
                         <td>{{ r[0] }}</td>
                         <td>{{ r[1] }}</td>
                         <td>{{ r[2]|int // 60 }}:{{ '%02d' % (r[2] % 60) }}</td>
