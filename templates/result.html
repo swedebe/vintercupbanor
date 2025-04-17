@@ -13,14 +13,18 @@
 </head>
 <body>
     <h1>Resultat per bana</h1>
-    {% for course, results in results.items() %}
-        <h2>Bana {{ course }}</h2>
-        <table>
-            <tr><th>Placering</th><th>Namn</th><th>Totaltid</th></tr>
-            {% for i, r in enumerate(results|sort(attribute=1), 1) %}
-                <tr><td>{{ i }}</td><td>{{ r[0] }}</td><td>{{ r[1]|int // 60 }}:{{ '%02d' % (r[1] % 60) }}</td></tr>
-            {% endfor %}
-        </table>
-    {% endfor %}
+    {% if results %}
+        {% for course, course_results in results.items() if course in ['A', 'B', 'C', 'D', 'E'] and course_results %}
+            <h2>Bana {{ course }}</h2>
+            <table>
+                <tr><th>Placering</th><th>Namn</th><th>Totaltid</th></tr>
+                {% for i, r in enumerate(course_results|sort(attribute=1), 1) %}
+                    <tr><td>{{ i }}</td><td>{{ r[0] }}</td><td>{{ r[1]|int // 60 }}:{{ '%02d' % (r[1] % 60) }}</td></tr>
+                {% endfor %}
+            </table>
+        {% endfor %}
+    {% else %}
+        <p>Inga resultat hittades.</p>
+    {% endif %}
 </body>
 </html>
