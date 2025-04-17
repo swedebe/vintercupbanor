@@ -17,9 +17,9 @@ def get_courses_from_meos(meos_root):
     courses = {}
     for course_elem in meos_root.findall(".//Course"):
         name = course_elem.findtext("Name")
-        control_elems = course_elem.findall("Controls/Control")
-        codes = [ctrl.text for ctrl in control_elems]
-        if name and codes:
+        control_text = course_elem.findtext("Controls")
+        if name in ['A', 'B', 'C', 'D', 'E'] and control_text:
+            codes = [code for code in control_text.strip().split(";") if code]
             courses[name] = codes
     return courses
 
