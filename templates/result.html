@@ -18,9 +18,9 @@
             <h2>Bana {{ course }}</h2>
             <table>
                 <tr><th>Placering</th><th>Namn</th><th>Totaltid</th></tr>
-                {% for i, r in enumerate(results[course]|sort(attribute=1), 1) %}
-                    <tr><td>{{ i }}</td><td>{{ r[0] }}</td><td>{{ r[1]|int // 60 }}:{{ '%02d' % (r[1] % 60) }}</td></tr>
-                {% endfor %}
+                {% for r in results[course]|sort(attribute=1) %}
+    <tr><td>{{ loop.index }}</td><td>{{ r[0] }}</td><td>{{ r[1] // 60 }}:{{ '%02d' % (r[1] % 60) }}</td></tr>
+{% endfor %}
             </table>
         {% endif %}
     {% endfor %}
