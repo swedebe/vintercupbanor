@@ -27,6 +27,16 @@ def extract_results(result_root, courses):
         full_name = f"{given} {family}"
 
         result_elem = person_result.find(".//iof:Result", namespaces=ns)
+
+        start_elem = person_result.find(".//iof:StartTime", namespaces=ns)
+        start_offset = 0
+        if start_elem is not None:
+            try:
+                dt = parser.isoparse(start_elem.text)
+                start_offset = dt.hour * 3600 + dt.minute * 60 + dt.second
+            except:
+                pass
+
         finish_elem = person_result.find(".//iof:FinishTime", namespaces=ns)
         finish_time = None
         if finish_elem is not None:
@@ -42,7 +52,8 @@ def extract_results(result_root, courses):
             time = split.findtext("iof:Time", namespaces=ns)
             status = split.get("status", "")
             if code:
-                splits.append({"code": code, "time": int(time) if time else None, "status": status})
+                abs_time = int(time) + start_offset if time else None
+                splits.append({"code": code, "time": abs_time, "status": status})
 
         clean_splits = [s for s in splits if s['status'] not in ("Missing", "Additional") and s['code']]
         split_codes = [s['code'] for s in clean_splits]
