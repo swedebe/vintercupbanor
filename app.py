@@ -26,6 +26,9 @@ def extract_results(result_root, courses, lap_control):
         family = person_elem.findtext("iof:Family", namespaces=ns)
         full_name = f"{given} {family}"
 
+        club_elem = person_result.find(".//iof:Organisation/iof:Name", namespaces=ns)
+        club = club_elem.text if club_elem is not None else ""
+
         result_elem = person_result.find(".//iof:Result", namespaces=ns)
 
         start_elem = person_result.find(".//iof:StartTime", namespaces=ns)
@@ -64,26 +67,26 @@ def extract_results(result_root, courses, lap_control):
             if full_control_codes[-1] != lap_control:
                 return f"<h1>Fel</h1><p>Alla banor måste sluta med samma kodsiffra samt överensstämma med varvningskontrollen</p>"
 
-            match_codes = full_control_codes[:-1]  # exkludera varvningskontrollen
+            match_codes = full_control_codes[:-1]
             match = contains_subsequence(split_codes, match_codes)
 
             while match:
                 i_start, i_end = match
 
-                # Starttid: 100 före match eller <StartTime>
+                # Starttid: kontroll före match == varvningskontroll, annars StartTime
                 start_time = start_offset
                 if i_start > 0 and clean_splits[i_start - 1]['code'] == lap_control:
                     if clean_splits[i_start - 1]['time'] is not None:
                         start_time = clean_splits[i_start - 1]['time']
 
-                # Sluttid: 100 efter match eller <FinishTime>
+                # Sluttid: kontroll efter match == varvningskontroll, annars FinishTime
                 end_time = finish_time
                 if i_end + 1 < len(clean_splits) and clean_splits[i_end + 1]['code'] == lap_control:
                     if clean_splits[i_end + 1]['time'] is not None:
                         end_time = clean_splits[i_end + 1]['time']
 
                 if start_time is not None and end_time is not None:
-                    results[course_name].append((full_name, end_time - start_time))
+                    results[course_name].append((full_name, club, end_time - start_time))
 
                 for i in range(i_start, i_end + 1):
                     split_codes[i] = "__used__"
@@ -113,17 +116,25 @@ def index():
 
             result_data = extract_results(result_root, courses, lap_control)
             if isinstance(result_data, str):
-                return result_data  # visa ev. felmeddelande
+                return result_data
 
-            rendered = render_template("result.html", results=result_data)
+            ns = {"iof": "http://www.orienteering.org/datastandard/3.0"}
+            event_elem = result_root.find(".//iof:Event", namespaces=ns)
+            event_name = event_elem.findtext("iof:Name", namespaces=ns) if event_elem is not None else ""
+            event_date = event_elem.findtext(".//iof:StartTime/iof:Date", namespaces=ns) if event_elem is not None else ""
+
+            generated = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+            filename = f"{event_date.replace('-', '')[2:]} Resultat per bana {event_name}.html"
+
+            rendered = render_template("result.html", results=result_data, event_name=event_name, event_date=event_date, generated=generated)
             html_file = BytesIO(rendered.encode("utf-8"))
-            return send_file(html_file, as_attachment=True, download_name="resultat.html", mimetype="text/html")
+            return send_file(html_file, as_attachment=True, download_name=filename, mimetype="text/html")
         except Exception as e:
             return f"<h1>Fel vid bearbetning:</h1><pre>{str(e)}</pre>"
 
     return '''
     <!doctype html>
-    <title>Resultat per bana</title>
+    <title>Skapa Vintercupsresultat per bana</title>
     <h1>Klistra in kontroller för banorna A–E, välj varvningskontroll och ladda upp resultatfil</h1>
     <form method=post enctype=multipart/form-data>
       Varvningskontroll: <input type=text name=lap_control size=10><br><br>
@@ -135,6 +146,14 @@ def index():
       Resultat XML: <input type=file name=result_xml><br><br>
       <input type=submit value="Generera HTML">
     </form>
+    <p>Hjälptext:</p>
+    <p>Verktyget är byggt efter hur nordöstra Skånes vintercup är utformad. Meos måste ha använts på rätt sätt för att det här ska fungera. david snabel-a vram.se kan dela med sig av instruktioner.</p>
+    <p>Från fliken "Tävling" i Meos ska du exportera "Resultat & sträcktider" i xml-format.</p>
+    <p>Från fliken "Banor" i Meos, kopiera strängen med kontroller för bana A-E och klistra in här på hemsidan.</p>
+    <p>Ange varvningskontrollen (t.ex. 100).</p>
+    <p>Ladda upp resultat-XML och klicka på att Generera html. Tiderna beräknas automatiskt och nerladdning av en html-fil triggas.</p>
+    <p></p>
+    <p><i>David Ek, 2025-04-17</i></p>
     '''
 
 if __name__ == "__main__":
