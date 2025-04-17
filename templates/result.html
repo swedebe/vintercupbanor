@@ -1,0 +1,27 @@
+
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Resultat per bana</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        h2 { margin-top: 40px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+        th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Resultat per bana</h1>
+    {% for course in ['A','B','C','D','E'] %}
+        <h2>Bana {{ course }}</h2>
+        <table>
+            <tr><th>Placering</th><th>Namn</th><th>Totaltid</th></tr>
+            {% for r in results if r[0] == course %}
+                <tr><td>{{ r[1] }}</td><td>{{ r[2] }}</td><td>{{ r[3] }}</td></tr>
+            {% endfor %}
+        </table>
+    {% endfor %}
+</body>
+</html>
