@@ -146,10 +146,13 @@ def index():
       Resultat XML: <input type=file name=result_xml><br><br>
       <input type=submit value="Generera HTML">
     </form>
-    <p>Hjälptext:</p>
+    <p><b>Hjälptext:</b></p>
     <p>Verktyget är byggt efter hur nordöstra Skånes vintercup är utformad. Meos måste ha använts på rätt sätt för att det här ska fungera. david snabel-a vram.se kan dela med sig av instruktioner.</p>
-    <p>Från fliken "Tävling" i Meos ska du exportera "Resultat & sträcktider" i xml-format.</p>
-    <p>Från fliken "Banor" i Meos, kopiera strängen med kontroller för bana A-E och klistra in här på hemsidan.</p>
+    <p>Från fliken <b>Tävling</b> i Meos ska du exportera <b>Resultat & sträcktider</b>.<br>
+    - Avmarkera klasser som ej är relevanta<br>
+    - Välj filformat <b>IOF Resultat version 3.0 (XML)</b><br>
+    - Avmarkera <b>Exportera slingor som raka banor</b></p>
+    <p>Från fliken <b>Banor</b> i Meos, kopiera strängen med kontroller för bana A-E och klistra in här på hemsidan.</p>
     <p>Ange varvningskontrollen (t.ex. 100).</p>
     <p>Ladda upp resultat-XML och klicka på att Generera html. Tiderna beräknas automatiskt och nerladdning av en html-fil triggas.</p>
     <p></p>
