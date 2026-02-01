@@ -94,6 +94,10 @@ def extract_results_meos(meos_root):
         name = runner.findtext("Name")
         if not name:
             continue
+        if "," in name:
+            parts = [p.strip() for p in name.split(",", 1)]
+            if len(parts) == 2 and parts[0] and parts[1]:
+                name = f"{parts[1]} {parts[0]}"
         club_id = runner.findtext("Club") or ""
         club = club_map.get(club_id, "")
 
