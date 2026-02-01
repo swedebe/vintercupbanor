@@ -5,12 +5,16 @@ import datetime
 
 app = Flask(__name__)
 
-def contains_subsequence(codes, subsequence):
-    n = len(subsequence)
-    for i in range(len(codes) - n + 1):
-        if codes[i:i+n] == subsequence:
-            return i, i+n-1
-    return None
+def is_subsequence(codes, subsequence):
+    if not subsequence:
+        return False
+    i = 0
+    for code in codes:
+        if code == subsequence[i]:
+            i += 1
+            if i == len(subsequence):
+                return True
+    return False
 
 def parse_meos_controls(text):
     return [code.strip() for code in text.split(';') if code.strip()]
@@ -26,35 +30,30 @@ def extract_results_from_splits(runners, courses, lap_control):
         splits = runner["splits"]
 
         split_codes = [s["code"] for s in splits]
+        lap_indices = [i for i, code in enumerate(split_codes) if code == lap_control]
+        segment_starts = [-1] + lap_indices
+        segment_ends = lap_indices + [len(splits)]
 
-        for course_name, full_control_codes in courses.items():
-            if not full_control_codes:
+        for seg_start, seg_end in zip(segment_starts, segment_ends):
+            seg_start_idx = seg_start + 1
+            seg_end_idx = seg_end
+            segment_codes = split_codes[seg_start_idx:seg_end_idx]
+            if not segment_codes:
                 continue
-            if full_control_codes[-1] != lap_control:
-                return f"<h1>Fel</h1><p>Alla banor måste sluta med samma kodsiffra samt överensstämma med varvningskontrollen</p>"
 
-            match_codes = full_control_codes[:-1]
-            match = contains_subsequence(split_codes, match_codes)
+            lap_start = start_time if seg_start == -1 else splits[seg_start]["time"]
+            lap_end = finish_time if seg_end == len(splits) else splits[seg_end]["time"]
 
-            while match:
-                i_start, i_end = match
+            for course_name, full_control_codes in courses.items():
+                if not full_control_codes:
+                    continue
+                if full_control_codes[-1] != lap_control:
+                    return f"<h1>Fel</h1><p>Alla banor måste sluta med samma kodsiffra samt överensstämma med varvningskontrollen</p>"
 
-                # Starttid: kontroll före match == varvningskontroll, annars Start
-                lap_start = start_time
-                if i_start > 0 and splits[i_start - 1]["code"] == lap_control:
-                    lap_start = splits[i_start - 1]["time"]
-
-                # Sluttid: kontroll efter match == varvningskontroll, annars Finish
-                lap_end = finish_time
-                if i_end + 1 < len(splits) and splits[i_end + 1]["code"] == lap_control:
-                    lap_end = splits[i_end + 1]["time"]
-
-                if lap_start is not None and lap_end is not None:
-                    results[course_name].append((full_name, club, int(lap_end - lap_start)))
-
-                for i in range(i_start, i_end + 1):
-                    split_codes[i] = "__used__"
-                match = contains_subsequence(split_codes, match_codes)
+                match_codes = full_control_codes[:-1]
+                if is_subsequence(segment_codes, match_codes):
+                    if lap_start is not None and lap_end is not None:
+                        results[course_name].append((full_name, club, int(lap_end - lap_start)))
 
     return results
 
